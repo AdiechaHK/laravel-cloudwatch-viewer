@@ -6,374 +6,439 @@
 <title>CloudWatch Viewer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* ── Reset ─────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+[hidden] { display: none !important; }
 
-    :root {
-        --bg:        #0a0a0f;
-        --surface:   #111118;
-        --surface2:  #1a1a24;
-        --border:    #2a2a3a;
-        --accent:    #00ff88;
-        --accent-dim:#00cc6a;
-        --text:      #e2e8f0;
-        --text-muted:#6b7280;
-        --text-dim:  #9ca3af;
-        --error:     #ff4d4d;
-        --warning:   #f59e0b;
-        --info:      #3b82f6;
-        --debug:     #a855f7;
-        --radius:    6px;
-    }
+/* ── Design tokens ─────────────────────────────────────────────── */
+:root {
+    --bg:           #07090f;
+    --surface:      #0d1017;
+    --surface2:     #131720;
+    --surface3:     #1a1f2e;
+    --surface4:     #222840;
+    --border:       #222640;
+    --border-dim:   #181c2e;
+    --accent:       #00d4aa;
+    --accent-dim:   #00b390;
+    --accent-glow:  rgba(0,212,170,.14);
+    --text:         #e4eaf5;
+    --text-dim:     #8894a8;
+    --text-muted:   #3f4960;
+    --error:        #ff6b6b;
+    --error-bg:     rgba(255,107,107,.1);
+    --error-border: rgba(255,107,107,.25);
+    --warning:      #fbbf24;
+    --warning-bg:   rgba(251,191,36,.1);
+    --warning-border:rgba(251,191,36,.25);
+    --info:         #4ea8ff;
+    --info-bg:      rgba(78,168,255,.1);
+    --info-border:  rgba(78,168,255,.25);
+    --debug:        #b48eff;
+    --debug-bg:     rgba(180,142,255,.1);
+    --debug-border: rgba(180,142,255,.25);
+    --radius:       8px;
+    --radius-sm:    5px;
+    --radius-lg:    12px;
+    --shadow-sm:    0 2px 8px rgba(0,0,0,.35);
+    --shadow:       0 8px 32px rgba(0,0,0,.5);
+    --font-ui:      'Inter', system-ui, sans-serif;
+    --font-mono:    'IBM Plex Mono', 'Fira Code', monospace;
+}
 
-    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'IBM Plex Sans', sans-serif; font-size: 14px; line-height: 1.5; }
+/* ── Base ───────────────────────────────────────────────────────── */
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font-ui); font-size: 13px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
 
-    /* ── HEADER ───────────────────────────────────────────────── */
-    .header {
-        position: sticky; top: 0; z-index: 100;
-        display: flex; align-items: center; gap: 10px;
-        padding: 0 24px; height: 52px;
-        background: var(--surface); border-bottom: 1px solid var(--border);
-    }
-    .header-dot {
-        width: 8px; height: 8px; border-radius: 50%;
-        background: var(--accent);
-        box-shadow: 0 0 6px var(--accent);
-        animation: pulse 2s ease-in-out infinite;
-    }
-    @keyframes pulse {
-        0%,100% { opacity: 1; box-shadow: 0 0 6px var(--accent); }
-        50%      { opacity: .5; box-shadow: 0 0 12px var(--accent); }
-    }
-    .header-title {
-        font-family: 'IBM Plex Mono', monospace;
-        font-size: 13px; font-weight: 600; letter-spacing: .08em;
-        color: var(--text);
-    }
-    .header-title span { color: var(--accent); }
+/* ── Scrollbars ─────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--surface4); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
-    /* ── LAYOUT ───────────────────────────────────────────────── */
-    .layout { display: flex; height: calc(100vh - 52px); overflow: hidden; }
+/* ── Header ─────────────────────────────────────────────────────── */
+.header {
+    position: sticky; top: 0; z-index: 200;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 20px; height: 54px;
+    background: rgba(13,16,23,.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+}
+.header-brand { display: flex; align-items: center; gap: 10px; }
+.header-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent); flex-shrink: 0;
+    box-shadow: 0 0 0 2px var(--accent-glow), 0 0 8px var(--accent);
+    animation: breathe 2.4s ease-in-out infinite;
+}
+@keyframes breathe {
+    0%,100% { box-shadow: 0 0 0 2px var(--accent-glow), 0 0 8px var(--accent); }
+    50%      { box-shadow: 0 0 0 4px var(--accent-glow), 0 0 16px var(--accent); }
+}
+.header-name {
+    font-family: var(--font-mono); font-size: 13px; font-weight: 600;
+    letter-spacing: .04em; color: var(--text);
+}
+.header-name em { color: var(--accent); font-style: normal; }
+.header-right { display: flex; align-items: center; gap: 12px; }
 
-    /* ── SIDEBAR ──────────────────────────────────────────────── */
-    .sidebar {
-        width: 280px; flex-shrink: 0;
-        background: var(--surface); border-right: 1px solid var(--border);
-        overflow-y: auto; padding: 16px 16px 24px;
-        display: flex; flex-direction: column; gap: 20px;
-    }
-    .sidebar::-webkit-scrollbar { width: 4px; }
-    .sidebar::-webkit-scrollbar-track { background: transparent; }
-    .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+/* ── Layout ─────────────────────────────────────────────────────── */
+.layout { display: flex; height: calc(100vh - 54px); overflow: hidden; }
 
-    .section-label {
-        font-family: 'IBM Plex Mono', monospace;
-        font-size: 10px; font-weight: 600; letter-spacing: .12em;
-        color: var(--text-muted); text-transform: uppercase;
-        margin-bottom: 8px;
-    }
+/* ── Sidebar ─────────────────────────────────────────────────────── */
+.sidebar {
+    width: 296px; flex-shrink: 0;
+    background: var(--surface); border-right: 1px solid var(--border);
+    overflow-y: auto; display: flex; flex-direction: column; gap: 0;
+}
+.sidebar-section { padding: 16px; border-bottom: 1px solid var(--border-dim); }
+.sidebar-section:last-of-type { border-bottom: none; }
+.sidebar-footer { padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; margin-top: auto; border-top: 1px solid var(--border-dim); }
 
-    /* Log groups */
-    .group-list { display: flex; flex-direction: column; gap: 6px; }
-    .group-item { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-    .group-item input[type="checkbox"] {
-        appearance: none; width: 14px; height: 14px; flex-shrink: 0;
-        border: 1px solid var(--border); border-radius: 3px;
-        background: var(--surface2); cursor: pointer; position: relative;
-        transition: border-color .15s, background .15s;
-    }
-    .group-item input[type="checkbox"]:checked {
-        background: var(--accent); border-color: var(--accent);
-    }
-    .group-item input[type="checkbox"]:checked::after {
-        content: ''; position: absolute; left: 4px; top: 1px;
-        width: 4px; height: 8px; border: 2px solid #000;
-        border-left: none; border-top: none; transform: rotate(45deg);
-    }
-    .group-item label {
-        font-size: 12px; color: var(--text-dim); cursor: pointer;
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 210px;
-    }
-    .group-item:hover label { color: var(--text); }
+.section-label {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 10px; font-weight: 600; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--text-muted);
+    margin-bottom: 10px;
+}
+.section-label svg { width: 11px; height: 11px; opacity: .7; }
 
-    /* Level pills */
-    .level-pills { display: flex; flex-wrap: wrap; gap: 6px; }
-    .level-pill {
-        padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500;
-        font-family: 'IBM Plex Mono', monospace; letter-spacing: .04em;
-        border: 1px solid var(--border); background: transparent;
-        color: var(--text-muted); cursor: pointer;
-        transition: all .15s;
-    }
-    .level-pill:hover { border-color: var(--text-dim); color: var(--text); }
-    .level-pill.active[data-level="ALL"]     { background: var(--accent); border-color: var(--accent); color: #000; }
-    .level-pill.active[data-level="ERROR"]   { background: var(--error); border-color: var(--error); color: #fff; }
-    .level-pill.active[data-level="WARNING"] { background: var(--warning); border-color: var(--warning); color: #000; }
-    .level-pill.active[data-level="INFO"]    { background: var(--info); border-color: var(--info); color: #fff; }
-    .level-pill.active[data-level="DEBUG"]   { background: var(--debug); border-color: var(--debug); color: #fff; }
+/* ── Log group checkboxes ──────────────────────────────────────── */
+.group-list { display: flex; flex-direction: column; gap: 4px; }
+.group-item { display: flex; align-items: flex-start; gap: 9px; padding: 5px 7px; border-radius: var(--radius-sm); cursor: pointer; transition: background .12s; }
+.group-item:hover { background: var(--surface2); }
+.group-item input[type="checkbox"] {
+    appearance: none; flex-shrink: 0; width: 15px; height: 15px; margin-top: 1px;
+    border: 1.5px solid var(--border); border-radius: 4px;
+    background: var(--surface2); cursor: pointer; position: relative;
+    transition: all .15s;
+}
+.group-item input[type="checkbox"]:checked { background: var(--accent); border-color: var(--accent); }
+.group-item input[type="checkbox"]:checked::after {
+    content: ''; position: absolute; left: 4px; top: 1px;
+    width: 4px; height: 8px; border: 1.5px solid #000;
+    border-left: none; border-top: none; transform: rotate(45deg);
+}
+.group-item label { cursor: pointer; display: flex; flex-direction: column; gap: 1px; }
+.group-item .group-name { font-size: 12px; font-weight: 500; color: var(--text); }
+.group-item .group-path { font-family: var(--font-mono); font-size: 9px; color: var(--text-muted); word-break: break-all; }
+.group-empty { font-size: 11px; color: var(--text-muted); line-height: 1.6; }
+.group-empty code { color: var(--accent); font-family: var(--font-mono); }
 
-    /* Date inputs */
-    .date-group { display: flex; flex-direction: column; gap: 6px; }
-    .date-label { font-size: 11px; color: var(--text-muted); }
-    input[type="datetime-local"] {
-        width: 100%; padding: 6px 8px; font-size: 11px;
-        font-family: 'IBM Plex Mono', monospace;
-        background: var(--surface2); border: 1px solid var(--border);
-        border-radius: var(--radius); color: var(--text);
-        outline: none; transition: border-color .15s;
-        color-scheme: dark;
-    }
-    input[type="datetime-local"]:focus { border-color: var(--accent); }
+/* ── Level pills ─────────────────────────────────────────────────── */
+.level-grid { display: flex; flex-wrap: wrap; gap: 5px; }
+.level-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 9px; border-radius: 20px; cursor: pointer;
+    font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: .05em;
+    border: 1.5px solid var(--border); background: transparent; color: var(--text-muted);
+    transition: all .15s;
+}
+.level-pill::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.level-pill:hover { border-color: var(--text-dim); color: var(--text-dim); }
+.level-pill.active[data-level="ALL"]     { background: rgba(228,234,245,.08); border-color: var(--text-dim); color: var(--text); }
+.level-pill.active[data-level="ERROR"]   { background: var(--error-bg);   border-color: var(--error-border);   color: var(--error);   }
+.level-pill.active[data-level="WARNING"] { background: var(--warning-bg); border-color: var(--warning-border); color: var(--warning); }
+.level-pill.active[data-level="INFO"]    { background: var(--info-bg);    border-color: var(--info-border);    color: var(--info);    }
+.level-pill.active[data-level="DEBUG"]   { background: var(--debug-bg);   border-color: var(--debug-border);   color: var(--debug);   }
 
-    /* Text inputs */
-    .search-group { display: flex; flex-direction: column; gap: 6px; }
-    .search-input {
-        width: 100%; padding: 6px 8px; font-size: 12px;
-        font-family: 'IBM Plex Mono', monospace;
-        background: var(--surface2); border: 1px solid var(--border);
-        border-radius: var(--radius); color: var(--text);
-        outline: none; transition: border-color .15s;
-    }
-    .search-input::placeholder { color: var(--text-muted); }
-    .search-input:focus { border-color: var(--accent); }
+/* ── Form controls ───────────────────────────────────────────────── */
+.field-stack { display: flex; flex-direction: column; gap: 7px; }
+.field-label { font-size: 11px; color: var(--text-dim); font-weight: 500; }
 
-    .divider { border: none; border-top: 1px solid var(--border); }
+.input-wrap { position: relative; }
+.input-icon {
+    position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+    color: var(--text-muted); width: 13px; height: 13px; pointer-events: none;
+}
+.form-input {
+    width: 100%; background: var(--surface2); border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text); outline: none;
+    font-family: var(--font-mono); font-size: 11px;
+    padding: 7px 10px; transition: border-color .15s, box-shadow .15s;
+}
+.form-input.has-icon { padding-left: 30px; }
+.form-input::placeholder { color: var(--text-muted); }
+.form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+select.form-input { cursor: pointer; color-scheme: dark; }
+input[type="datetime-local"].form-input { color-scheme: dark; }
 
-    /* Buttons */
-    .btn-primary {
-        width: 100%; padding: 9px; font-size: 12px; font-weight: 600;
-        font-family: 'IBM Plex Mono', monospace; letter-spacing: .06em;
-        background: var(--accent); color: #000; border: none;
-        border-radius: var(--radius); cursor: pointer;
-        transition: background .15s, transform .1s;
-    }
-    .btn-primary:hover { background: var(--accent-dim); }
-    .btn-primary:active { transform: scale(.98); }
-    .btn-secondary {
-        width: 100%; padding: 7px; font-size: 11px; font-weight: 500;
-        font-family: 'IBM Plex Mono', monospace; letter-spacing: .04em;
-        background: transparent; color: var(--text-muted);
-        border: 1px solid var(--border); border-radius: var(--radius);
-        cursor: pointer; transition: all .15s;
-    }
-    .btn-secondary:hover { border-color: var(--text-dim); color: var(--text); }
+/* ── Toggle switch ───────────────────────────────────────────────── */
+.toggle-row { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 4px 0; }
+.toggle-row input { position: absolute; opacity: 0; width: 0; height: 0; }
+.toggle-track {
+    width: 30px; height: 17px; border-radius: 9px; flex-shrink: 0;
+    background: var(--surface3); border: 1.5px solid var(--border);
+    position: relative; transition: background .2s, border-color .2s;
+}
+.toggle-thumb {
+    position: absolute; top: 2px; left: 2px;
+    width: 11px; height: 11px; border-radius: 50%;
+    background: var(--text-muted); transition: transform .2s, background .2s;
+}
+.toggle-row input:checked ~ .toggle-track { background: var(--accent-glow); border-color: var(--accent); }
+.toggle-row input:checked ~ .toggle-track .toggle-thumb { transform: translateX(13px); background: var(--accent); }
+.toggle-row span { font-size: 12px; color: var(--text-dim); }
 
-    .btn-live {
-        width: 100%; padding: 9px; font-size: 12px; font-weight: 600;
-        font-family: 'IBM Plex Mono', monospace; letter-spacing: .06em;
-        background: transparent; color: var(--error);
-        border: 1px solid var(--error); border-radius: var(--radius);
-        cursor: pointer; transition: all .15s;
-    }
-    .btn-live:hover { background: rgba(255,77,77,.1); }
-    .btn-live.live-active { background: rgba(255,77,77,.15); }
+/* ── Buttons ─────────────────────────────────────────────────────── */
+.btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    width: 100%; padding: 9px 14px; border-radius: var(--radius-sm);
+    font-family: var(--font-ui); font-size: 12px; font-weight: 600;
+    letter-spacing: .01em; border: 1.5px solid transparent;
+    cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn svg { width: 14px; height: 14px; flex-shrink: 0; }
 
-    .live-indicator {
-        display: flex; align-items: center; gap: 6px;
-        font-family: 'IBM Plex Mono', monospace; font-size: 11px;
-        font-weight: 600; letter-spacing: .06em; color: var(--error);
-    }
-    .live-dot {
-        width: 7px; height: 7px; border-radius: 50%; background: var(--error);
-        animation: pulse 1s ease-in-out infinite;
-    }
+.btn-primary { background: var(--accent); color: #021a14; border-color: var(--accent); }
+.btn-primary:hover:not(:disabled) { background: var(--accent-dim); border-color: var(--accent-dim); }
+.btn-primary:active:not(:disabled) { transform: scale(.98); }
 
-    @keyframes flashNew {
-        0%   { background: rgba(0,255,136,.12); }
-        100% { background: transparent; }
-    }
-    .row-new { animation: flashNew 1.5s ease-out forwards; }
+.btn-ghost {
+    background: transparent; color: var(--text-muted);
+    border-color: var(--border); font-weight: 500;
+}
+.btn-ghost:hover:not(:disabled) { color: var(--text-dim); border-color: var(--border); background: var(--surface2); }
 
-    .tz-select {
-        width: 100%; padding: 6px 8px; font-size: 11px;
-        font-family: 'IBM Plex Mono', monospace;
-        background: var(--surface2); border: 1px solid var(--border);
-        border-radius: var(--radius); color: var(--text);
-        outline: none; transition: border-color .15s; cursor: pointer;
-    }
-    .tz-select:focus { border-color: var(--accent); }
-    .tz-select option { background: var(--surface2); }
+/* ── Mode segmented control (header) ─────────────────────────────── */
+.mode-seg {
+    display: inline-flex; align-items: center;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 20px; padding: 3px; gap: 2px;
+}
+.mode-opt {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 13px; border-radius: 16px; border: none;
+    font-family: var(--font-ui); font-size: 11px; font-weight: 600; letter-spacing: .04em;
+    color: var(--text-muted); background: transparent;
+    cursor: pointer; transition: color .15s, background .15s, box-shadow .15s;
+    white-space: nowrap;
+}
+.mode-opt:hover:not(.active) { color: var(--text-dim); }
+.mode-opt.active {
+    background: var(--surface4); color: var(--text);
+    box-shadow: 0 1px 3px rgba(0,0,0,.4);
+}
+.mode-opt[data-mode="live"].active {
+    background: var(--error-bg); color: var(--error);
+    box-shadow: 0 1px 3px rgba(0,0,0,.3);
+}
+.mode-opt svg { width: 11px; height: 11px; flex-shrink: 0; }
+.mode-live-dot {
+    width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0;
+}
+.mode-opt[data-mode="live"].active .mode-live-dot { animation: breathe 1s ease-in-out infinite; }
 
-    /* ── MAIN CONTENT ─────────────────────────────────────────── */
-    .main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
-    .main::-webkit-scrollbar { width: 6px; }
-    .main::-webkit-scrollbar-track { background: transparent; }
-    .main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+/* ── Sidebar section — muted (disabled in live mode) ────────────── */
+.sidebar-section.muted {
+    opacity: .3; pointer-events: none; user-select: none;
+    transition: opacity .2s;
+}
 
-    /* Loading bar */
-    .loading-bar { height: 2px; background: var(--border); position: relative; overflow: hidden; }
-    .loading-bar-inner {
-        position: absolute; top: 0; left: -40%; width: 40%; height: 100%;
-        background: linear-gradient(90deg, transparent, var(--accent), transparent);
-        animation: slide 1.2s linear infinite;
-        display: none;
-    }
-    .loading-bar-inner.active { display: block; }
-    @keyframes slide { from { left: -40%; } to { left: 100%; } }
+/* ── Main ────────────────────────────────────────────────────────── */
+.main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; min-width: 0; }
 
-    /* Toolbar */
-    .toolbar {
-        display: flex; align-items: center; justify-content: space-between;
-        padding: 10px 20px; border-bottom: 1px solid var(--border);
-        background: var(--surface);
-    }
-    .toolbar-count {
-        font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--text-muted);
-    }
-    .toolbar-count strong { color: var(--accent); }
+/* ── Progress bar ────────────────────────────────────────────────── */
+.progress-bar { height: 2px; background: var(--border-dim); flex-shrink: 0; overflow: hidden; }
+.progress-fill {
+    height: 100%; width: 40%; background: linear-gradient(90deg, transparent, var(--accent), var(--accent-dim), transparent);
+    transform: translateX(-100%);
+    transition: opacity .2s;
+}
+.progress-fill.running { animation: progress-slide 1.1s linear infinite; }
+@keyframes progress-slide { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
 
-    /* Table */
-    .table-wrapper { flex: 1; overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    thead th {
-        padding: 10px 14px; text-align: left; font-size: 10px; font-weight: 600;
-        font-family: 'IBM Plex Mono', monospace; letter-spacing: .1em;
-        color: var(--text-muted); text-transform: uppercase;
-        background: var(--surface); border-bottom: 1px solid var(--border);
-        position: sticky; top: 0; z-index: 10;
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .default-cell { font-size: 12px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
-    tbody tr:hover { background: var(--surface2); }
-    tbody td { padding: 9px 14px; font-size: 12px; vertical-align: middle; overflow: hidden; }
+/* ── Toolbar ─────────────────────────────────────────────────────── */
+.toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 20px; border-bottom: 1px solid var(--border-dim);
+    background: var(--surface); flex-shrink: 0; gap: 12px;
+}
+.toolbar-count { font-size: 12px; color: var(--text-dim); }
+.toolbar-count strong { color: var(--text); font-weight: 600; }
+.toolbar-meta { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); }
 
-    .ts-cell { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+/* ── Alert banner ────────────────────────────────────────────────── */
+.alert {
+    margin: 12px 16px; padding: 9px 13px; border-radius: var(--radius-sm);
+    font-family: var(--font-mono); font-size: 11px; display: flex; align-items: flex-start; gap: 8px;
+}
+.alert svg { width: 14px; height: 14px; flex-shrink: 0; margin-top: 1px; }
+.alert-error { background: var(--error-bg); border: 1px solid var(--error-border); color: var(--error); }
+.alert-warn  { background: var(--warning-bg); border: 1px solid var(--warning-border); color: var(--warning); }
 
-    .badge {
-        display: inline-block; padding: 2px 7px; border-radius: 20px;
-        font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600;
-        letter-spacing: .04em; white-space: nowrap;
-    }
-    .badge-ERROR   { background: rgba(255,77,77,.15);   color: #ff6b6b; border: 1px solid rgba(255,77,77,.3); }
-    .badge-WARNING { background: rgba(245,158,11,.15); color: #fbbf24; border: 1px solid rgba(245,158,11,.3); }
-    .badge-INFO    { background: rgba(59,130,246,.15);  color: #60a5fa; border: 1px solid rgba(59,130,246,.3); }
-    .badge-DEBUG   { background: rgba(168,85,247,.15);  color: #c084fc; border: 1px solid rgba(168,85,247,.3); }
-    .badge-DEFAULT { background: rgba(107,114,128,.15); color: #9ca3af; border: 1px solid rgba(107,114,128,.3); }
+/* ── Table ───────────────────────────────────────────────────────── */
+.table-wrap { overflow-x: auto; flex: 1; }
+table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+thead th {
+    padding: 9px 14px; text-align: left; white-space: nowrap;
+    font-size: 10px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--text-muted); background: var(--surface);
+    border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10;
+    overflow: hidden; text-overflow: ellipsis;
+}
+tbody tr {
+    border-bottom: 1px solid var(--border-dim);
+    border-left: 2px solid transparent;
+    transition: background .1s, border-left-color .1s;
+    cursor: pointer;
+}
+tbody tr:hover { background: var(--surface2); }
+tbody tr[data-level="ERROR"]    { border-left-color: var(--error);   }
+tbody tr[data-level="WARNING"]  { border-left-color: var(--warning); }
+tbody tr[data-level="INFO"]     { border-left-color: var(--info);    }
+tbody tr[data-level="DEBUG"]    { border-left-color: var(--debug);   }
+tbody td { padding: 8px 14px; font-size: 12px; vertical-align: middle; overflow: hidden; }
 
-    .msg-cell {
-        max-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        cursor: pointer; color: var(--text);
-    }
-    .msg-cell:hover { color: var(--accent); }
+/* ── Cell types ──────────────────────────────────────────────────── */
+.cell-ts { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-dim); white-space: nowrap; }
+.cell-msg { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 0; color: var(--text); font-size: 12px; }
+.cell-msg:hover { color: var(--accent); }
+.cell-uid { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cell-url { font-size: 11px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cell-rid {
+    font-family: var(--font-mono); font-size: 10.5px; color: var(--info);
+    white-space: nowrap; cursor: pointer;
+    text-underline-offset: 3px; text-decoration: underline dotted;
+}
+.cell-rid:hover { color: #7dc4ff; }
+.cell-default { font-size: 11.5px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    .uid-cell { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* ── Badges ──────────────────────────────────────────────────────── */
+.badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 7px; border-radius: 20px;
+    font-family: var(--font-mono); font-size: 10px; font-weight: 600; letter-spacing: .04em;
+    white-space: nowrap;
+}
+.badge::before { content: ''; width: 4px; height: 4px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.badge-ERROR   { background: var(--error-bg);   color: var(--error);   border: 1px solid var(--error-border);   }
+.badge-WARNING { background: var(--warning-bg); color: var(--warning); border: 1px solid var(--warning-border); }
+.badge-INFO    { background: var(--info-bg);    color: var(--info);    border: 1px solid var(--info-border);    }
+.badge-DEBUG   { background: var(--debug-bg);   color: var(--debug);   border: 1px solid var(--debug-border);   }
+.badge-DEFAULT { background: rgba(255,255,255,.05); color: var(--text-dim); border: 1px solid var(--border); }
 
-    .url-cell { font-size: 11px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* ── Empty state ─────────────────────────────────────────────────── */
+.empty-state {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 14px;
+    padding: 60px 24px; text-align: center;
+}
+.empty-icon { color: var(--text-muted); opacity: .5; }
+.empty-icon svg { width: 40px; height: 40px; }
+.empty-title { font-size: 15px; font-weight: 600; color: var(--text-dim); }
+.empty-sub { font-size: 12px; color: var(--text-muted); max-width: 300px; line-height: 1.7; }
+.empty-sub kbd {
+    display: inline-block; padding: 1px 5px; border-radius: 4px;
+    background: var(--surface3); border: 1px solid var(--border);
+    font-family: var(--font-mono); font-size: 10px; color: var(--text-dim);
+}
 
-    .rid-cell {
-        font-family: 'IBM Plex Mono', monospace; font-size: 11px;
-        color: var(--info); cursor: pointer; white-space: nowrap;
-        text-decoration: underline; text-decoration-style: dotted;
-    }
-    .rid-cell:hover { color: #93c5fd; }
+/* ── Pagination ──────────────────────────────────────────────────── */
+.pagination {
+    display: flex; align-items: center; justify-content: center; gap: 4px;
+    padding: 12px 20px; border-top: 1px solid var(--border-dim);
+    background: var(--surface); flex-shrink: 0;
+}
+.page-btn {
+    min-width: 30px; height: 28px; padding: 0 6px;
+    background: transparent; border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text-dim);
+    font-family: var(--font-mono); font-size: 11px; cursor: pointer;
+    transition: all .15s; display: flex; align-items: center; justify-content: center;
+}
+.page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.page-btn.active { background: var(--accent); border-color: var(--accent); color: #021a14; font-weight: 700; }
+.page-btn:disabled { opacity: .3; cursor: default; }
+.page-dot { color: var(--text-muted); font-size: 13px; padding: 0 2px; }
 
-    .toggle-item { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 6px 0; }
-    .toggle-item input[type="checkbox"] {
-        appearance: none; width: 14px; height: 14px; flex-shrink: 0;
-        border: 1px solid var(--border); border-radius: 3px;
-        background: var(--surface2); cursor: pointer; position: relative;
-        transition: border-color .15s, background .15s;
-    }
-    .toggle-item input[type="checkbox"]:checked { background: var(--accent); border-color: var(--accent); }
-    .toggle-item input[type="checkbox"]:checked::after {
-        content: ''; position: absolute; left: 4px; top: 1px;
-        width: 4px; height: 8px; border: 2px solid #000;
-        border-left: none; border-top: none; transform: rotate(45deg);
-    }
-    .toggle-item label { font-size: 12px; color: var(--text-dim); cursor: pointer; }
+/* ── Slide-over Drawer ───────────────────────────────────────────── */
+.drawer-backdrop {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,.62); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+    opacity: 0; pointer-events: none;
+    transition: opacity .28s ease;
+}
+.drawer-backdrop.open { opacity: 1; pointer-events: auto; }
 
-    /* Empty state */
-    .empty-state {
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        flex: 1; gap: 12px; padding: 60px 20px; color: var(--text-muted);
-    }
-    .empty-icon { font-size: 40px; opacity: .4; }
-    .empty-title { font-size: 14px; font-weight: 500; color: var(--text-dim); }
-    .empty-sub { font-size: 12px; text-align: center; max-width: 280px; }
+.drawer {
+    position: fixed; top: 0; right: 0; bottom: 0; z-index: 201;
+    width: min(540px, 100vw);
+    background: var(--surface); border-left: 1px solid var(--border);
+    box-shadow: -12px 0 48px rgba(0,0,0,.55);
+    display: flex; flex-direction: column;
+    transform: translateX(100%);
+    transition: transform .3s cubic-bezier(.4, 0, .2, 1);
+    will-change: transform;
+}
+.drawer.open { transform: translateX(0); }
 
-    /* Error banner */
-    .error-banner {
-        display: none; margin: 16px 20px; padding: 10px 14px;
-        background: rgba(255,77,77,.1); border: 1px solid rgba(255,77,77,.3);
-        border-radius: var(--radius); color: #ff6b6b; font-size: 12px;
-        font-family: 'IBM Plex Mono', monospace;
-    }
-
-    /* Pagination */
-    .pagination {
-        display: flex; align-items: center; justify-content: center; gap: 4px;
-        padding: 12px 20px; border-top: 1px solid var(--border);
-        background: var(--surface);
-    }
-    .page-btn {
-        min-width: 32px; height: 28px; padding: 0 6px;
-        background: transparent; border: 1px solid var(--border);
-        border-radius: 4px; color: var(--text-dim); font-size: 12px;
-        font-family: 'IBM Plex Mono', monospace; cursor: pointer;
-        transition: all .15s; display: flex; align-items: center; justify-content: center;
-    }
-    .page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
-    .page-btn.active { background: var(--accent); border-color: var(--accent); color: #000; font-weight: 600; }
-    .page-btn:disabled { opacity: .3; cursor: default; }
-    .page-ellipsis { color: var(--text-muted); font-size: 12px; padding: 0 4px; }
-
-    /* ── MODAL ────────────────────────────────────────────────── */
-    .modal-backdrop {
-        display: none; position: fixed; inset: 0; z-index: 200;
-        background: rgba(0,0,0,.7); backdrop-filter: blur(2px);
-        align-items: center; justify-content: center;
-        padding: 20px;
-    }
-    .modal-backdrop.open { display: flex; }
-    .modal {
-        background: var(--surface); border: 1px solid var(--border);
-        border-radius: 10px; width: 100%; max-width: 680px;
-        max-height: 88vh; overflow-y: auto; padding: 24px;
-        display: flex; flex-direction: column; gap: 16px;
-    }
-    .modal::-webkit-scrollbar { width: 4px; }
-    .modal::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-    .modal-header { display: flex; align-items: center; justify-content: space-between; }
-    .modal-title { font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 600; color: var(--accent); }
-    .modal-close {
-        width: 28px; height: 28px; background: var(--surface2); border: 1px solid var(--border);
-        border-radius: 4px; color: var(--text-muted); cursor: pointer; font-size: 16px;
-        display: flex; align-items: center; justify-content: center; line-height: 1;
-        transition: all .15s;
-    }
-    .modal-close:hover { border-color: var(--error); color: var(--error); }
-    .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; }
-    .modal-field label {
-        display: block; font-size: 10px; font-weight: 600; letter-spacing: .1em;
-        text-transform: uppercase; color: var(--text-muted); margin-bottom: 3px;
-        font-family: 'IBM Plex Mono', monospace;
-    }
-    .modal-field .val {
-        font-size: 12px; color: var(--text); word-break: break-all;
-        font-family: 'IBM Plex Mono', monospace;
-    }
-    .modal-field.full { grid-column: 1 / -1; }
-    .modal-divider { border: none; border-top: 1px solid var(--border); }
-    .modal-raw-label {
-        font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600;
-        letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted);
-    }
-    .modal-raw {
-        background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
-        padding: 12px; font-family: 'IBM Plex Mono', monospace; font-size: 11px;
-        color: var(--text-dim); overflow-x: auto; white-space: pre; line-height: 1.6;
-        max-height: 280px;
-    }
+.drawer-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    flex-shrink: 0; background: var(--surface2);
+}
+.drawer-title-wrap { display: flex; align-items: center; gap: 10px; }
+.drawer-title { font-size: 13px; font-weight: 600; color: var(--text); font-family: var(--font-ui); }
+.drawer-close {
+    width: 28px; height: 28px; background: var(--surface3); border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text-muted); cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: all .15s; flex-shrink: 0;
+}
+.drawer-close:hover { border-color: var(--error-border); color: var(--error); background: var(--error-bg); }
+.drawer-close svg { width: 13px; height: 13px; }
+.drawer-body { overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; flex: 1; }
+.drawer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; }
+.drawer-field { display: flex; flex-direction: column; gap: 4px; }
+.drawer-field.full { grid-column: 1 / -1; }
+.drawer-field label {
+    font-size: 9px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--text-muted); font-family: var(--font-ui);
+}
+.drawer-field .val {
+    font-family: var(--font-mono); font-size: 11.5px; color: var(--text);
+    word-break: break-all; line-height: 1.5;
+}
+.drawer-divider { border: none; border-top: 1px solid var(--border); }
+.drawer-section-label { font-size: 9px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--text-muted); }
+.drawer-raw {
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 14px; font-family: var(--font-mono); font-size: 11px;
+    color: var(--text-dim); overflow-x: auto; white-space: pre; line-height: 1.65;
+    flex: 1; min-height: 0; tab-size: 2;
+}
+/* JSON syntax highlight */
+.json-key     { color: var(--text-dim); }
+.json-str     { color: #86efac; }
+.json-num     { color: #fda4af; }
+.json-bool    { color: #f9a8d4; }
+.json-null    { color: var(--text-muted); }
 </style>
 </head>
 <body>
 
 <!-- HEADER -->
 <header class="header">
-    <div class="header-dot"></div>
-    <div class="header-title">Cloud<span>Watch</span> Viewer</div>
+    <div class="header-brand">
+        <div class="header-dot"></div>
+        <span class="header-name">Cloud<em>Watch</em> Viewer</span>
+    </div>
+    <div class="header-right">
+        <div class="mode-seg" role="group" aria-label="Viewing mode">
+            <button class="mode-opt active" id="queryModeBtn" data-mode="query" type="button">
+                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5.5" cy="5.5" r="4"/><line x1="8.5" y1="8.5" x2="11" y2="11"/></svg>
+                Query
+            </button>
+            <button class="mode-opt" id="liveBtn" data-mode="live" type="button">
+                <span class="mode-live-dot"></span>
+                Live
+            </button>
+        </div>
+    </div>
 </header>
 
 <div class="layout">
@@ -381,103 +446,134 @@
     <!-- SIDEBAR -->
     <aside class="sidebar">
 
-        <!-- LOG GROUPS -->
-        <div>
-            <div class="section-label">Log Groups</div>
+        <!-- Log Groups -->
+        <div class="sidebar-section">
+            <div class="section-label">
+                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="4" height="4" rx="1"/><rect x="7" y="1" width="4" height="4" rx="1"/><rect x="1" y="7" width="4" height="4" rx="1"/><rect x="7" y="7" width="4" height="4" rx="1"/></svg>
+                Log Groups
+            </div>
             <div class="group-list" id="groupList">
                 @forelse ($logGroups as $group)
                 <div class="group-item">
-                    <input type="checkbox" id="grp_{{ $loop->index }}"
-                           value="{{ $group['value'] }}" checked>
-                    <label for="grp_{{ $loop->index }}" title="{{ $group['value'] }}">
-                        {{ $group['name'] }}
+                    <input type="checkbox" id="grp_{{ $loop->index }}" value="{{ $group['value'] }}" checked>
+                    <label for="grp_{{ $loop->index }}">
+                        <span class="group-name">{{ $group['name'] }}</span>
+                        <span class="group-path">{{ $group['value'] }}</span>
                     </label>
                 </div>
                 @empty
-                <p style="font-size:11px;color:var(--text-muted);">No log groups configured.<br>Edit <code style="color:var(--accent)">config/cloudwatch-viewer.php</code>.</p>
+                <p class="group-empty">No log groups configured.<br>Edit <code>config/cloudwatch-viewer.php</code>.</p>
                 @endforelse
             </div>
         </div>
 
-        <!-- LOG LEVEL -->
-        <div>
-            <div class="section-label">Log Level</div>
-            <div class="level-pills">
+        <!-- Log Level -->
+        <div class="sidebar-section">
+            <div class="section-label">
+                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M1 10L4 5l3 3 2-4 2 4"/></svg>
+                Level
+            </div>
+            <div class="level-grid">
                 @foreach (['ALL','ERROR','WARNING','INFO','DEBUG'] as $lvl)
-                <button class="level-pill {{ $lvl === 'ALL' ? 'active' : '' }}"
-                        data-level="{{ $lvl }}">{{ $lvl }}</button>
+                <button class="level-pill {{ $lvl === 'ALL' ? 'active' : '' }}" data-level="{{ $lvl }}" type="button">{{ $lvl }}</button>
                 @endforeach
             </div>
         </div>
 
-        <!-- TIMEZONE -->
-        <div>
-            <div class="section-label">Timezone</div>
-            <select id="tzSelect" class="tz-select"></select>
+        <!-- Timezone -->
+        <div class="sidebar-section">
+            <div class="section-label">
+                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="6" r="5"/><path d="M6 1c-1.5 1.5-2.5 3-2.5 5S4.5 9.5 6 11M6 1c1.5 1.5 2.5 3 2.5 5S7.5 9.5 6 11M1 6h10"/></svg>
+                Timezone
+            </div>
+            <select id="tzSelect" class="form-input"></select>
         </div>
 
-        <!-- DATE RANGE -->
-        <div>
-            <div class="section-label">Date Range</div>
-            <div class="date-group">
-                <div class="date-label">From</div>
-                <input type="datetime-local" id="startDate">
-                <div class="date-label" style="margin-top:4px;">To</div>
-                <input type="datetime-local" id="endDate">
+        <!-- Date Range -->
+        <div class="sidebar-section" id="dateRangeSection">
+            <div class="section-label">
+                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="2" width="10" height="9" rx="1"/><path d="M1 5h10M4 1v2M8 1v2"/></svg>
+                Date Range
+            </div>
+            <div class="field-stack">
+                <div>
+                    <div class="field-label" style="margin-bottom:4px;">From</div>
+                    <input type="datetime-local" id="startDate" class="form-input">
+                </div>
+                <div>
+                    <div class="field-label" style="margin-bottom:4px;">To</div>
+                    <input type="datetime-local" id="endDate" class="form-input">
+                </div>
             </div>
         </div>
 
-        <!-- SEARCH -->
-        <div>
-            <div class="section-label">Search</div>
-            <div class="search-group">
-                <input type="text" id="filterMessage"    class="search-input" placeholder="Message">
-                <input type="text" id="filterUserId"     class="search-input" placeholder="User ID">
-                <input type="text" id="filterRequestId"  class="search-input" placeholder="Request ID">
-                <input type="text" id="filterUrl"        class="search-input" placeholder="URL / Endpoint">
+        <!-- Search -->
+        <div class="sidebar-section">
+            <div class="section-label">
+                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="5" cy="5" r="4"/><line x1="8.5" y1="8.5" x2="11" y2="11"/></svg>
+                Search
             </div>
-            <div class="toggle-item" style="margin-top:10px;">
-                <input type="checkbox" id="filterHasContext">
-                <label for="filterHasContext">Hide logs without context</label>
+            <div class="field-stack">
+                <div class="input-wrap">
+                    <svg class="input-icon" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="12.5" y2="12.5"/></svg>
+                    <input type="text" id="filterMessage" class="form-input has-icon" placeholder="Message contains…">
+                </div>
+                <div class="input-wrap">
+                    <svg class="input-icon" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="4.5" r="3"/><path d="M1.5 13c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/></svg>
+                    <input type="text" id="filterUserId" class="form-input has-icon" placeholder="User ID">
+                </div>
+                <div class="input-wrap">
+                    <svg class="input-icon" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="5" y1="1.5" x2="3.5" y2="12.5"/><line x1="10.5" y1="1.5" x2="9" y2="12.5"/><line x1="1.5" y1="5" x2="12.5" y2="5"/><line x1="1.5" y1="9" x2="12.5" y2="9"/></svg>
+                    <input type="text" id="filterRequestId" class="form-input has-icon" placeholder="Request ID">
+                </div>
+                <div class="input-wrap">
+                    <svg class="input-icon" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5.5 7a3 3 0 004.24 0l2.12-2.12a3 3 0 00-4.24-4.24L6.5 1.76"/><path d="M8.5 7a3 3 0 00-4.24 0L2.14 9.12a3 3 0 004.24 4.24L7.5 12.24"/></svg>
+                    <input type="text" id="filterUrl" class="form-input has-icon" placeholder="URL / Endpoint">
+                </div>
+                <label class="toggle-row" style="margin-top:4px;">
+                    <input type="checkbox" id="filterHasContext">
+                    <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                    <span>Hide logs without context</span>
+                </label>
             </div>
         </div>
 
-        <hr class="divider">
-
-        <button class="btn-primary" id="searchBtn">→ Search Logs</button>
-        <button class="btn-live" id="liveBtn">▶ Go Live</button>
-        <button class="btn-secondary" id="resetBtn">Reset Filters</button>
+        <!-- Actions -->
+        <div class="sidebar-footer">
+            <button class="btn btn-primary" id="searchBtn" type="button">
+                <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="12.5" y2="12.5"/></svg>
+                Search Logs
+            </button>
+            <button class="btn btn-ghost" id="resetBtn" type="button">Reset Filters</button>
+        </div>
 
     </aside>
 
     <!-- MAIN -->
     <main class="main" id="mainArea">
 
-        <!-- Loading bar -->
-        <div class="loading-bar"><div class="loading-bar-inner" id="loadingBar"></div></div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
 
-        <!-- Error banner -->
-        <div class="error-banner" id="errorBanner"></div>
-
-        <!-- Toolbar -->
-        <div class="toolbar" id="toolbar" style="display:none;">
-            <div class="toolbar-count" id="toolbarCount"></div>
-            <div class="live-indicator" id="liveIndicator" style="display:none;">
-                <div class="live-dot"></div><span>LIVE</span>
-            </div>
+        <div class="alert alert-error" id="errorBanner" hidden>
+            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="7.5"/><circle cx="7" cy="10" r=".5" fill="currentColor"/></svg>
+            <span id="errorText"></span>
         </div>
 
-        <!-- Table wrapper -->
-        <div class="table-wrapper" id="tableWrapper" style="display:none;">
+        <div class="toolbar" id="toolbar" hidden>
+            <div class="toolbar-count" id="toolbarCount"></div>
+            <div class="toolbar-meta" id="toolbarMeta"></div>
+        </div>
+
+        <div class="table-wrap" id="tableWrapper" hidden>
             <table>
                 <thead>
                     @php
                         $colWidths = [
-                            '@timestamp'         => '160px',
-                            'level_name'         => '90px',
+                            '@timestamp'         => '158px',
+                            'level_name'         => '92px',
                             'message'            => '',
                             'context.request_id' => '100px',
-                            'context.user_id'    => '110px',
+                            'context.user_id'    => '108px',
                             'context.url'        => '160px',
                             '@logStream'         => '140px',
                         ];
@@ -493,30 +589,41 @@
             </table>
         </div>
 
-        <!-- Pagination -->
-        <div class="pagination" id="paginationBar" style="display:none;"></div>
+        <div class="pagination" id="paginationBar" hidden></div>
 
-        <!-- Empty state -->
         <div class="empty-state" id="emptyState">
-            <div class="empty-icon">◈</div>
-            <div class="empty-title">No logs loaded</div>
-            <div class="empty-sub">Select log groups, set your filters, and click <strong>Search Logs</strong> to query CloudWatch Insights.</div>
+            <div class="empty-icon">
+                <svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".6">
+                    <rect x="4" y="8" width="32" height="26" rx="3"/>
+                    <path d="M4 14h32M12 8v6M28 8v6"/>
+                    <line x1="10" y1="22" x2="22" y2="22" stroke-linecap="round"/>
+                    <line x1="10" y1="27" x2="18" y2="27" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <div class="empty-title" id="emptyTitle">No logs loaded</div>
+            <div class="empty-sub" id="emptySub">Select log groups, configure your filters, then press <kbd>Search Logs</kbd> or hit <kbd>↵</kbd> in any field.</div>
         </div>
 
     </main>
 </div>
 
-<!-- DETAIL MODAL -->
-<div class="modal-backdrop" id="modalBackdrop">
-    <div class="modal" id="modalContent" role="dialog" aria-modal="true">
-        <div class="modal-header">
-            <div class="modal-title">Log Entry Detail</div>
-            <button class="modal-close" id="modalClose" title="Close (Esc)">✕</button>
+<!-- SLIDE-OVER DRAWER -->
+<div class="drawer-backdrop" id="drawerBackdrop"></div>
+<div class="drawer" id="logDrawer" role="dialog" aria-modal="true" aria-label="Log Entry" tabindex="-1">
+    <div class="drawer-header">
+        <div class="drawer-title-wrap">
+            <span id="drawerBadge"></span>
+            <span class="drawer-title">Log Entry</span>
         </div>
-        <div class="modal-grid" id="modalFields"></div>
-        <hr class="modal-divider">
-        <div class="modal-raw-label">Raw JSON</div>
-        <pre class="modal-raw" id="modalRaw"></pre>
+        <button class="drawer-close" id="drawerClose" type="button" aria-label="Close">
+            <svg viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="1" y1="1" x2="12" y2="12"/><line x1="12" y1="1" x2="1" y2="12"/></svg>
+        </button>
+    </div>
+    <div class="drawer-body">
+        <div class="drawer-grid" id="drawerFields"></div>
+        <hr class="drawer-divider">
+        <div class="drawer-section-label">Raw JSON</div>
+        <pre class="drawer-raw" id="drawerRaw"></pre>
     </div>
 </div>
 
@@ -524,111 +631,127 @@
 (function () {
     'use strict';
 
-    const PAGE_SIZE   = 25;
-    const FETCH_URL   = '{{ route('cloudwatch-viewer.fetch') }}';
-    const STREAM_URL  = '{{ route('cloudwatch-viewer.live') }}';
-    const COLUMNS     = @json($columns);
+    // ── Constants ──────────────────────────────────────────────
+    const PAGE_SIZE  = 25;
+    const FETCH_URL  = '{{ route('cloudwatch-viewer.fetch') }}';
+    const STREAM_URL = '{{ route('cloudwatch-viewer.live') }}';
+    const COLUMNS    = @json($columns);
 
+    // ── State ──────────────────────────────────────────────────
     let activeTimezone  = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    let activeLevel     = 'ALL';
+    let allLogs         = [];
+    let currentPage     = 1;
     let liveInterval    = null;
-    let liveNextStartMs = null; // UTC millisecond cursor — kept in ms to avoid precision loss
+    let liveNextStartMs = null;
+    let fetchController = null;
 
-    let allLogs       = [];
-    let currentPage   = 1;
-    let activeLevel   = 'ALL';
+    // ── DOM refs ───────────────────────────────────────────────
+    const $ = id => document.getElementById(id);
+    const toolbar      = $('toolbar');
+    const toolbarCount = $('toolbarCount');
+    const toolbarMeta  = $('toolbarMeta');
+    const tableWrapper = $('tableWrapper');
+    const paginationBar= $('paginationBar');
+    const emptyState   = $('emptyState');
+    const tbody        = $('logTableBody');
+    const progressFill = $('progressFill');
+    const errorBanner  = $('errorBanner');
+    const errorText    = $('errorText');
+    const drawer       = $('logDrawer');
+    const drawerBackdrop = $('drawerBackdrop');
+    const searchBtn    = $('searchBtn');
+    const liveBtn      = $('liveBtn');
+    const queryModeBtn = $('queryModeBtn');
+    const dateRangeSec = $('dateRangeSection');
 
-    // ── Helpers ────────────────────────────────────────────────
-    function escHtml(str) {
-        if (str == null) return '';
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
+    // ── Security: XSS escape ───────────────────────────────────
+    const escHtml = str => str == null ? '' : String(str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+    // ── JSON syntax highlighter ────────────────────────────────
+    function highlightJson(raw) {
+        return escHtml(raw)
+            .replace(/("(?:[^"\\]|\\.)*")\s*:/g, '<span class="json-key">$1</span>:')
+            .replace(/:\s*("(?:[^"\\]|\\.)*")/g, ': <span class="json-str">$1</span>')
+            .replace(/:\s*(-?\d+\.?\d*(?:[eE][+-]?\d+)?)/g, ': <span class="json-num">$1</span>')
+            .replace(/:\s*(true|false)/g, ': <span class="json-bool">$1</span>')
+            .replace(/:\s*(null)/g, ': <span class="json-null">$1</span>');
     }
 
+    // ── Level badge ────────────────────────────────────────────
     function levelBadge(level) {
-        const map = { ERROR:'badge-ERROR', WARNING:'badge-WARNING', INFO:'badge-INFO', DEBUG:'badge-DEBUG' };
-        const cls = map[(level||'').toUpperCase()] || 'badge-DEFAULT';
+        const map = { ERROR: 'badge-ERROR', WARNING: 'badge-WARNING', INFO: 'badge-INFO', DEBUG: 'badge-DEBUG' };
+        const cls = map[(level ?? '').toUpperCase()] ?? 'badge-DEFAULT';
         return `<span class="badge ${cls}">${escHtml(level || '—')}</span>`;
     }
 
-    function shortRid(rid) {
-        return rid ? rid.slice(0, 8) : '—';
-    }
-
+    // ── Timestamp formatter ────────────────────────────────────
     function formatTs(ts) {
         if (!ts) return '—';
         try {
-            // CloudWatch @timestamp is UTC — normalise to ISO and add Z so
-            // the Date constructor treats it as UTC regardless of browser TZ
-            const iso = (ts.includes('T') ? ts : ts.replace(' ', 'T'))
-                            .replace(/(\.\d+)?$/, 'Z').replace('ZZ', 'Z');
+            const iso = (ts.includes('T') ? ts : ts.replace(' ', 'T')).replace(/(\.\d+)?Z?$/, 'Z').replace('ZZ', 'Z');
             const d = new Date(iso);
             if (isNaN(d)) return escHtml(ts);
             return new Intl.DateTimeFormat('sv', {
                 timeZone: activeTimezone,
                 year: 'numeric', month: '2-digit', day: '2-digit',
                 hour: '2-digit', minute: '2-digit', second: '2-digit',
-            }).format(d); // sv locale → "YYYY-MM-DD HH:mm:ss"
-        } catch(e) { return escHtml(ts); }
+            }).format(d);
+        } catch { return escHtml(ts); }
     }
 
-    // Convert a UTC Unix timestamp (seconds) to a datetime-local string in tz
+    // ── Timezone ↔ datetime-local converters ───────────────────
     function utcSecToDatetimeLocal(unixSec, tz) {
         return new Intl.DateTimeFormat('sv', {
-            timeZone: tz,
-            year: 'numeric', month: '2-digit', day: '2-digit',
+            timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
             hour: '2-digit', minute: '2-digit',
         }).format(new Date(unixSec * 1000)).replace(' ', 'T');
     }
 
-    // Convert a datetime-local string (interpreted in tz) to UTC Unix seconds
     function datetimeLocalToUnixSec(str, tz) {
         if (!str) return null;
-        // Parse the input as if it were UTC (baseline reference point)
         const base = new Date(str + ':00Z');
-        // Ask Intl what that same UTC instant looks like in the target timezone
         const inTz = new Intl.DateTimeFormat('sv', {
-            timeZone: tz,
-            year: 'numeric', month: '2-digit', day: '2-digit',
+            timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
             hour: '2-digit', minute: '2-digit', second: '2-digit',
         }).format(base).replace(' ', 'T');
-        // diff = how many ms ahead/behind the TZ is from UTC at this moment
         const diff = base.getTime() - new Date(inTz + 'Z').getTime();
-        // Apply that offset to the original input to get the true UTC instant
         return Math.floor((base.getTime() + diff) / 1000);
     }
 
-    // ── Cell renderer ─────────────────────────────────────────
+    // ── Cell renderer ──────────────────────────────────────────
     function renderCell(field, val, idx) {
         const v = val ?? '';
         switch (field) {
             case '@timestamp':
-                return `<td class="ts-cell">${escHtml(formatTs(v))}</td>`;
+                return `<td class="cell-ts">${escHtml(formatTs(v))}</td>`;
             case 'level_name':
                 return `<td>${levelBadge((v).toUpperCase())}</td>`;
             case 'message':
-                return `<td class="msg-cell" data-idx="${idx}" title="${escHtml(v)}">${escHtml(v || '—')}</td>`;
+                return `<td class="cell-msg" data-idx="${idx}" title="${escHtml(v)}">${escHtml(v || '—')}</td>`;
             case 'context.request_id': {
                 const rid = v;
-                return `<td class="rid-cell" data-rid="${escHtml(rid)}" title="${escHtml(rid)}">${escHtml(rid ? rid.slice(0, 8) : '—')}</td>`;
+                return `<td class="cell-rid" data-rid="${escHtml(rid)}" title="${escHtml(rid)}">${escHtml(rid ? rid.slice(0, 8) : '—')}</td>`;
             }
+            case 'context.user_id':
+                return `<td class="cell-uid" title="${escHtml(v)}">${escHtml(v || '—')}</td>`;
+            case 'context.url':
+                return `<td class="cell-url" title="${escHtml(v)}">${escHtml(v || '—')}</td>`;
             default:
-                return `<td class="default-cell" title="${escHtml(v)}">${escHtml(v || '—')}</td>`;
+                return `<td class="cell-default" title="${escHtml(v)}">${escHtml(v || '—')}</td>`;
         }
     }
 
-    // ── Default date range (last 24 hours in active timezone) ─
+    // ── Default dates ──────────────────────────────────────────
     function setDefaultDates() {
-        const nowSec  = Math.floor(Date.now() / 1000);
-        const fromSec = nowSec - 24 * 3600;
-        document.getElementById('startDate').value = utcSecToDatetimeLocal(fromSec, activeTimezone);
-        document.getElementById('endDate').value   = utcSecToDatetimeLocal(nowSec,  activeTimezone);
+        const nowSec = Math.floor(Date.now() / 1000);
+        $('startDate').value = utcSecToDatetimeLocal(nowSec - 24 * 3600, activeTimezone);
+        $('endDate').value   = utcSecToDatetimeLocal(nowSec, activeTimezone);
     }
 
-    // ── Populate timezone selector ─────────────────────────────
+    // ── Timezone selector ──────────────────────────────────────
     function buildTimezoneSelect() {
         const zones = [
             'UTC',
@@ -649,50 +772,289 @@
             'Pacific/Auckland','Pacific/Fiji',
         ];
         const now = new Date();
-        const withOffsets = zones.map(tz => {
+        const entries = zones.map(tz => {
             try {
                 const localStr = new Intl.DateTimeFormat('sv', {
-                    timeZone: tz,
-                    year:'numeric', month:'2-digit', day:'2-digit',
+                    timeZone: tz, year:'numeric', month:'2-digit', day:'2-digit',
                     hour:'2-digit', minute:'2-digit', second:'2-digit',
                 }).format(now).replace(' ', 'T');
-                const offsetMin = Math.round((new Date(localStr + 'Z').getTime() - now.getTime()) / 60000);
+                const offsetMin = Math.round((new Date(localStr + 'Z') - now) / 60000);
                 const sign = offsetMin >= 0 ? '+' : '-';
                 const abs  = Math.abs(offsetMin);
-                const h    = String(Math.floor(abs / 60)).padStart(2, '0');
-                const m    = String(abs % 60).padStart(2, '0');
-                return { tz, label: `(UTC${sign}${h}:${m}) ${tz.replace(/_/g, ' ')}`, offsetMin };
-            } catch(e) { return { tz, label: tz, offsetMin: 0 }; }
-        });
-        withOffsets.sort((a, b) => a.offsetMin - b.offsetMin || a.tz.localeCompare(b.tz));
+                const label = `(UTC${sign}${String(Math.floor(abs/60)).padStart(2,'0')}:${String(abs%60).padStart(2,'0')}) ${tz.replace(/_/g,' ')}`;
+                return { tz, label, offsetMin };
+            } catch { return { tz, label: tz, offsetMin: 0 }; }
+        }).sort((a, b) => a.offsetMin - b.offsetMin || a.tz.localeCompare(b.tz));
 
-        const select = document.getElementById('tzSelect');
-        // Ensure the browser's detected timezone appears even if not in the curated list
+        const sel = $('tzSelect');
         if (!zones.includes(activeTimezone)) {
-            const opt = document.createElement('option');
-            opt.value = activeTimezone; opt.selected = true;
-            opt.textContent = activeTimezone.replace(/_/g, ' ');
-            select.appendChild(opt);
+            const opt = new Option(activeTimezone.replace(/_/g,' '), activeTimezone, true, true);
+            sel.appendChild(opt);
         }
-        withOffsets.forEach(({ tz, label }) => {
-            const opt = document.createElement('option');
-            opt.value = tz;
-            opt.textContent = label;
-            opt.selected = (tz === activeTimezone);
-            select.appendChild(opt);
+        entries.forEach(({ tz, label }) => {
+            const opt = new Option(label, tz, false, tz === activeTimezone);
+            sel.appendChild(opt);
         });
     }
 
-    // ── Convert date inputs when timezone changes ──────────────
     function updateDateInputsForTimezone(newTz) {
-        const startEl = document.getElementById('startDate');
-        const endEl   = document.getElementById('endDate');
-        const startTs = startEl.value ? datetimeLocalToUnixSec(startEl.value, activeTimezone) : null;
-        const endTs   = endEl.value   ? datetimeLocalToUnixSec(endEl.value,   activeTimezone) : null;
+        const startEl = $('startDate'), endEl = $('endDate');
+        const sTs = startEl.value ? datetimeLocalToUnixSec(startEl.value, activeTimezone) : null;
+        const eTs = endEl.value   ? datetimeLocalToUnixSec(endEl.value,   activeTimezone) : null;
         activeTimezone = newTz;
-        if (startTs !== null) startEl.value = utcSecToDatetimeLocal(startTs, newTz);
-        if (endTs   !== null) endEl.value   = utcSecToDatetimeLocal(endTs,   newTz);
+        if (sTs) startEl.value = utcSecToDatetimeLocal(sTs, newTz);
+        if (eTs) endEl.value   = utcSecToDatetimeLocal(eTs, newTz);
     }
+
+    // ── Build request params ───────────────────────────────────
+    function buildParams() {
+        const p = new URLSearchParams();
+        document.querySelectorAll('#groupList input[type="checkbox"]:checked')
+            .forEach(cb => p.append('log_groups[]', cb.value));
+        p.set('level',      activeLevel);
+        p.set('message',    $('filterMessage').value.trim());
+        p.set('user_id',    $('filterUserId').value.trim());
+        p.set('request_id', $('filterRequestId').value.trim());
+        p.set('url',        $('filterUrl').value.trim());
+        p.set('has_context', $('filterHasContext').checked ? '1' : '0');
+        const sTs = datetimeLocalToUnixSec($('startDate').value, activeTimezone);
+        const eTs = datetimeLocalToUnixSec($('endDate').value,   activeTimezone);
+        if (sTs != null) p.set('start_ts', sTs);
+        if (eTs != null) p.set('end_ts',   eTs);
+        return p;
+    }
+
+    // ── Fetch (Insights search) ────────────────────────────────
+    async function fetchLogs() {
+        if (liveInterval) stopLive();
+        const params = buildParams();
+        if (!params.getAll('log_groups[]').length) { showError('Select at least one log group.'); return; }
+
+        fetchController?.abort();
+        fetchController = new AbortController();
+
+        setLoading(true);
+        hideError();
+        hideResults();
+
+        try {
+            const url = new URL(FETCH_URL, location.origin);
+            url.search = params.toString();
+            const t0  = performance.now();
+            const res = await fetch(url, { signal: fetchController.signal });
+            const ms  = Math.round(performance.now() - t0);
+            const data = await res.json();
+
+            if (!res.ok) { showError(data.error ?? `Server error (${res.status})`); return; }
+
+            allLogs     = data.logs ?? [];
+            currentPage = 1;
+            renderTable();
+            if (allLogs.length) toolbarMeta.textContent = `${ms}ms`;
+        } catch (err) {
+            if (err.name !== 'AbortError') showError('Network error: ' + err.message);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    // ── Render table ───────────────────────────────────────────
+    function renderTable() {
+        if (!allLogs.length) {
+            toolbar.hidden = tableWrapper.hidden = paginationBar.hidden = true;
+            emptyState.hidden = false;
+            $('emptyTitle').textContent = 'No results found';
+            $('emptySub').textContent = 'Try broadening your filters or extending the date range.';
+            return;
+        }
+
+        emptyState.hidden = true;
+        toolbar.hidden    = false;
+        tableWrapper.hidden = false;
+
+        const total     = Math.ceil(allLogs.length / PAGE_SIZE);
+        currentPage     = Math.max(1, Math.min(currentPage, total));
+        const start     = (currentPage - 1) * PAGE_SIZE;
+        const page      = allLogs.slice(start, start + PAGE_SIZE);
+
+        if (!liveInterval) {
+            toolbarCount.innerHTML = `Showing <strong>${start + 1}–${start + page.length}</strong> of <strong>${allLogs.length}</strong> results`;
+        }
+
+        tbody.innerHTML = page.map((log, i) => {
+            const level = (log.level_name ?? '').toUpperCase();
+            const cells = COLUMNS.map(col => renderCell(col.field, log[col.field], start + i)).join('');
+            return `<tr data-level="${escHtml(level)}">${cells}</tr>`;
+        }).join('');
+
+        renderPagination(total);
+    }
+
+    // ── Event delegation on tbody ──────────────────────────────
+    tbody.addEventListener('click', e => {
+        const msg = e.target.closest('.cell-msg');
+        if (msg) { openDrawer(allLogs[+msg.dataset.idx]); return; }
+
+        const rid = e.target.closest('.cell-rid');
+        if (rid?.dataset.rid) {
+            $('filterRequestId').value = rid.dataset.rid;
+            fetchLogs();
+        }
+    });
+
+    // ── Pagination ─────────────────────────────────────────────
+    function renderPagination(total) {
+        if (total <= 1) { paginationBar.hidden = true; return; }
+        paginationBar.hidden = false;
+
+        const pages = smartPages(currentPage, total);
+        paginationBar.innerHTML = [
+            `<button class="page-btn" id="pgPrev" ${currentPage===1 ? 'disabled' : ''}>‹</button>`,
+            ...pages.map(p => p === '…'
+                ? `<span class="page-dot">…</span>`
+                : `<button class="page-btn ${p===currentPage?'active':''}" data-p="${p}">${p}</button>`),
+            `<button class="page-btn" id="pgNext" ${currentPage===total ? 'disabled' : ''}>›</button>`,
+        ].join('');
+
+        paginationBar.querySelector('#pgPrev').addEventListener('click', () => goPage(currentPage - 1, total));
+        paginationBar.querySelector('#pgNext').addEventListener('click', () => goPage(currentPage + 1, total));
+        paginationBar.querySelectorAll('[data-p]').forEach(b => b.addEventListener('click', () => goPage(+b.dataset.p, total)));
+    }
+
+    function smartPages(cur, total) {
+        if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+        const p = [1];
+        if (cur > 3) p.push('…');
+        for (let i = Math.max(2, cur-1); i <= Math.min(total-1, cur+1); i++) p.push(i);
+        if (cur < total - 2) p.push('…');
+        p.push(total);
+        return p;
+    }
+
+    function goPage(p, total) {
+        currentPage = Math.max(1, Math.min(p, total));
+        renderTable();
+        document.getElementById('mainArea').scrollTop = 0;
+    }
+
+    // ── Modal ──────────────────────────────────────────────────
+    const FIELD_LABELS = {
+        '@timestamp':'Timestamp','level_name':'Level','message':'Message',
+        'context.user_id':'User ID','context.request_id':'Request ID',
+        'context.method':'Method','context.url':'URL',
+        'context.ip':'IP Address','context.environment':'Environment',
+        '@logStream':'Log Stream',
+    };
+
+    function openDrawer(log) {
+        $('drawerBadge').innerHTML = levelBadge((log.level_name ?? '').toUpperCase());
+        $('drawerFields').innerHTML = Object.entries(log)
+            .filter(([, v]) => v != null && v !== '')
+            .map(([k, v]) => {
+                const label = FIELD_LABELS[k] ?? k;
+                return `<div class="drawer-field${k==='message'?' full':''}">
+                    <label>${escHtml(label)}</label>
+                    <div class="val">${escHtml(String(v))}</div>
+                </div>`;
+            }).join('');
+        $('drawerRaw').innerHTML = highlightJson(JSON.stringify(log, null, 2));
+        drawerBackdrop.classList.add('open');
+        drawer.classList.add('open');
+        drawer.focus();
+    }
+
+    function closeDrawer() {
+        drawer.classList.remove('open');
+        drawerBackdrop.classList.remove('open');
+    }
+
+    $('drawerClose').addEventListener('click', closeDrawer);
+    drawerBackdrop.addEventListener('click', closeDrawer);
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+
+    // ── Live streaming ─────────────────────────────────────────
+    function startLive() {
+        if (liveInterval) return;
+        if (!document.querySelectorAll('#groupList input:checked').length) {
+            showError('Select at least one log group.'); return;
+        }
+        allLogs = []; currentPage = 1;
+        liveNextStartMs = Date.now() - 60_000;
+        hideError(); setLiveActive(true);
+        pollLive();
+        liveInterval = setInterval(pollLive, 5000);
+    }
+
+    function stopLive() {
+        clearInterval(liveInterval); liveInterval = null;
+        setLiveActive(false);
+    }
+
+    async function pollLive() {
+        const params = buildParams();
+        params.delete('start_ts'); params.delete('end_ts');
+        params.set('start_ts_ms', liveNextStartMs);
+        try {
+            const url = new URL(STREAM_URL, location.origin);
+            url.search = params.toString();
+            const res  = await fetch(url);
+            const data = await res.json();
+
+            if (!res.ok) { showError(data.error ?? `Poll error (${res.status})`); stopLive(); return; }
+
+            if (data.warnings?.length) showError('Warning: ' + data.warnings.join(' | '));
+            else hideError();
+
+            if (data.next_start_ms) liveNextStartMs = data.next_start_ms;
+
+            if (data.events?.length) {
+                const n = data.events.length;
+                allLogs = [...data.events, ...allLogs].slice(0, 2000);
+                currentPage = 1;
+                renderTable();
+                flashRows(n);
+            }
+            toolbarCount.innerHTML = `<strong>${allLogs.length}</strong> logs captured`;
+        } catch (err) {
+            console.warn('Live poll:', err.message);
+        }
+    }
+
+    function flashRows(count) {
+        Array.from(tbody.rows).slice(0, count).forEach(row => {
+            row.getAnimations().forEach(a => a.cancel());
+            row.animate(
+                [{ backgroundColor: 'rgba(0,212,170,.1)' }, { backgroundColor: 'transparent' }],
+                { duration: 1600, easing: 'ease-out', fill: 'forwards' }
+            );
+        });
+    }
+
+    function setLiveActive(on) {
+        liveBtn.classList.toggle('active', on);
+        queryModeBtn.classList.toggle('active', !on);
+        searchBtn.disabled = on;
+        dateRangeSec.classList.toggle('muted', on);
+        if (on) { emptyState.hidden = true; toolbar.hidden = false; tableWrapper.hidden = false; }
+    }
+
+    liveBtn.addEventListener('click',      () => { if (!liveInterval) startLive(); });
+    queryModeBtn.addEventListener('click', () => { if (liveInterval)  stopLive();  });
+
+    // ── Loading state ──────────────────────────────────────────
+    function setLoading(on) {
+        progressFill.classList.toggle('running', on);
+        searchBtn.disabled = on;
+        searchBtn.textContent = on ? 'Searching…' : '';
+        if (!on) {
+            searchBtn.insertAdjacentHTML('afterbegin',
+                `<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="4.5"/><line x1="9.5" y1="9.5" x2="12.5" y2="12.5"/></svg> Search Logs`);
+        }
+    }
+
+    function showError(msg) { errorText.textContent = msg; errorBanner.hidden = false; }
+    function hideError()          { errorBanner.hidden = true; }
+    function hideResults()        { toolbar.hidden = tableWrapper.hidden = paginationBar.hidden = true; }
 
     // ── Level pill selection ───────────────────────────────────
     document.querySelectorAll('.level-pill').forEach(pill => {
@@ -703,355 +1065,32 @@
         });
     });
 
-    // ── Build query params ─────────────────────────────────────
-    function buildParams() {
-        const params = new URLSearchParams();
-
-        document.querySelectorAll('#groupList input[type="checkbox"]:checked').forEach(cb => {
-            params.append('log_groups[]', cb.value);
-        });
-
-        params.set('level',      activeLevel);
-        params.set('message',    document.getElementById('filterMessage').value.trim());
-        params.set('user_id',    document.getElementById('filterUserId').value.trim());
-        params.set('request_id', document.getElementById('filterRequestId').value.trim());
-        params.set('url',         document.getElementById('filterUrl').value.trim());
-        params.set('has_context', document.getElementById('filterHasContext').checked ? '1' : '0');
-
-        const startTs = datetimeLocalToUnixSec(document.getElementById('startDate').value, activeTimezone);
-        const endTs   = datetimeLocalToUnixSec(document.getElementById('endDate').value,   activeTimezone);
-        if (startTs !== null) params.set('start_ts', startTs);
-        if (endTs   !== null) params.set('end_ts',   endTs);
-
-        return params;
-    }
-
-    // ── Fetch logs ─────────────────────────────────────────────
-    async function fetchLogs() {
-        const params = buildParams();
-
-        if (!params.getAll('log_groups[]').length) {
-            showError('Please select at least one log group.');
-            return;
-        }
-
-        setLoading(true);
-        hideError();
-        hideResults();
-
-        try {
-            const res  = await fetch(`${FETCH_URL}?${params.toString()}`);
-            const data = await res.json();
-
-            if (!res.ok) {
-                showError(data.error || `Server error (${res.status})`);
-                return;
-            }
-
-            allLogs     = data.logs || [];
-            currentPage = 1;
-            renderTable();
-        } catch (err) {
-            showError('Network error: ' + err.message);
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    // ── Render table ───────────────────────────────────────────
-    function renderTable() {
-        const tbody     = document.getElementById('logTableBody');
-        const toolbar   = document.getElementById('toolbar');
-        const tableWrap = document.getElementById('tableWrapper');
-        const pagination= document.getElementById('paginationBar');
-        const empty     = document.getElementById('emptyState');
-        const count     = document.getElementById('toolbarCount');
-
-        if (allLogs.length === 0) {
-            toolbar.style.display   = 'none';
-            tableWrap.style.display = 'none';
-            pagination.style.display= 'none';
-            empty.style.display     = 'flex';
-            empty.querySelector('.empty-title').textContent = 'No results found';
-            empty.querySelector('.empty-sub').textContent   = 'Try adjusting your filters or expanding the date range.';
-            return;
-        }
-
-        empty.style.display      = 'none';
-        toolbar.style.display    = 'flex';
-        tableWrap.style.display  = 'block';
-
-        const totalPages = Math.ceil(allLogs.length / PAGE_SIZE);
-        currentPage      = Math.max(1, Math.min(currentPage, totalPages));
-
-        const pageStart  = (currentPage - 1) * PAGE_SIZE;
-        const pageLogs   = allLogs.slice(pageStart, pageStart + PAGE_SIZE);
-
-        count.innerHTML = `Showing <strong>${pageStart + 1}–${pageStart + pageLogs.length}</strong> of <strong>${allLogs.length}</strong> results`;
-
-        tbody.innerHTML = pageLogs.map((log, idx) => {
-            const absIdx = pageStart + idx;
-            const cells  = COLUMNS.map(col => renderCell(col.field, log[col.field], absIdx)).join('');
-            return `<tr>${cells}</tr>`;
-        }).join('');
-
-        // Message click → modal
-        tbody.querySelectorAll('.msg-cell').forEach(cell => {
-            cell.addEventListener('click', () => openModal(allLogs[+cell.dataset.idx]));
-        });
-
-        // Request ID click → filter
-        tbody.querySelectorAll('.rid-cell').forEach(cell => {
-            cell.addEventListener('click', () => {
-                const rid = cell.dataset.rid;
-                if (rid) {
-                    document.getElementById('filterRequestId').value = rid;
-                    fetchLogs();
-                }
-            });
-        });
-
-        renderPagination(totalPages);
-    }
-
-    // ── Pagination ─────────────────────────────────────────────
-    function renderPagination(totalPages) {
-        const bar = document.getElementById('paginationBar');
-        if (totalPages <= 1) { bar.style.display = 'none'; return; }
-
-        bar.style.display = 'flex';
-        const pages = smartPages(currentPage, totalPages);
-
-        bar.innerHTML = `
-            <button class="page-btn" id="pagePrev" ${currentPage === 1 ? 'disabled' : ''}>‹ Prev</button>
-            ${pages.map(p => p === '…'
-                ? `<span class="page-ellipsis">…</span>`
-                : `<button class="page-btn ${p === currentPage ? 'active' : ''}" data-page="${p}">${p}</button>`
-            ).join('')}
-            <button class="page-btn" id="pageNext" ${currentPage === totalPages ? 'disabled' : ''}>Next ›</button>
-        `;
-
-        bar.querySelector('#pagePrev').addEventListener('click', () => goPage(currentPage - 1, totalPages));
-        bar.querySelector('#pageNext').addEventListener('click', () => goPage(currentPage + 1, totalPages));
-        bar.querySelectorAll('[data-page]').forEach(btn => {
-            btn.addEventListener('click', () => goPage(+btn.dataset.page, totalPages));
-        });
-    }
-
-    function smartPages(cur, total) {
-        if (total <= 7) return Array.from({length: total}, (_, i) => i + 1);
-        const pages = [];
-        pages.push(1);
-        if (cur > 3)              pages.push('…');
-        for (let p = Math.max(2, cur-1); p <= Math.min(total-1, cur+1); p++) pages.push(p);
-        if (cur < total - 2)      pages.push('…');
-        pages.push(total);
-        return pages;
-    }
-
-    function goPage(page, total) {
-        currentPage = Math.max(1, Math.min(page, total));
-        renderTable();
-        document.getElementById('mainArea').scrollTop = 0;
-    }
-
-    // ── Modal ──────────────────────────────────────────────────
-    function openModal(log) {
-        const fields = document.getElementById('modalFields');
-        const raw    = document.getElementById('modalRaw');
-
-        const FIELD_LABELS = {
-            '@timestamp':          'Timestamp',
-            'level_name':          'Level',
-            'message':             'Message',
-            'context.user_id':     'User ID',
-            'context.request_id':  'Request ID',
-            'context.method':      'Method',
-            'context.url':         'URL',
-            'context.ip':          'IP Address',
-            'context.environment': 'Environment',
-            '@logStream':          'Log Stream',
-        };
-
-        fields.innerHTML = Object.entries(log)
-            .filter(([, v]) => v != null && v !== '')
-            .map(([key, val]) => {
-                const label = FIELD_LABELS[key] || key;
-                const isMsg = key === 'message';
-                return `<div class="modal-field${isMsg ? ' full' : ''}">
-                    <label>${escHtml(label)}</label>
-                    <div class="val">${escHtml(val)}</div>
-                </div>`;
-            }).join('');
-
-        raw.textContent = JSON.stringify(log, null, 2);
-
-        document.getElementById('modalBackdrop').classList.add('open');
-    }
-
-    function closeModal() {
-        document.getElementById('modalBackdrop').classList.remove('open');
-    }
-
-    document.getElementById('modalClose').addEventListener('click', closeModal);
-    document.getElementById('modalBackdrop').addEventListener('click', e => {
-        if (e.target === document.getElementById('modalBackdrop')) closeModal();
+    // ── Timezone change ────────────────────────────────────────
+    $('tzSelect').addEventListener('change', function () {
+        updateDateInputsForTimezone(this.value);
+        if (allLogs.length) renderTable();
     });
-
-    // ── UI state helpers ───────────────────────────────────────
-    function setLoading(on) {
-        document.getElementById('loadingBar').classList.toggle('active', on);
-        document.getElementById('searchBtn').disabled = on;
-        document.getElementById('searchBtn').textContent = on ? '… Querying' : '→ Search Logs';
-    }
-
-    function showError(msg) {
-        const el = document.getElementById('errorBanner');
-        el.textContent = '⚠ ' + msg;
-        el.style.display = 'block';
-    }
-
-    function hideError() {
-        document.getElementById('errorBanner').style.display = 'none';
-    }
-
-    function hideResults() {
-        document.getElementById('toolbar').style.display    = 'none';
-        document.getElementById('tableWrapper').style.display = 'none';
-        document.getElementById('paginationBar').style.display = 'none';
-    }
 
     // ── Reset ──────────────────────────────────────────────────
-    document.getElementById('resetBtn').addEventListener('click', () => {
+    $('resetBtn').addEventListener('click', () => {
         if (liveInterval) stopLive();
         document.querySelectorAll('#groupList input[type="checkbox"]').forEach(cb => cb.checked = true);
-        document.querySelectorAll('.level-pill').forEach(p => {
-            p.classList.toggle('active', p.dataset.level === 'ALL');
-        });
+        document.querySelectorAll('.level-pill').forEach(p => p.classList.toggle('active', p.dataset.level === 'ALL'));
         activeLevel = 'ALL';
         setDefaultDates();
-        document.getElementById('filterMessage').value   = '';
-        document.getElementById('filterUserId').value    = '';
-        document.getElementById('filterRequestId').value = '';
-        document.getElementById('filterUrl').value            = '';
-        document.getElementById('filterHasContext').checked   = false;
+        ['filterMessage','filterUserId','filterRequestId','filterUrl'].forEach(id => $(id).value = '');
+        $('filterHasContext').checked = false;
     });
 
-    // ── Live streaming ─────────────────────────────────────────
-    function startLive() {
-        if (liveInterval) return;
-        const groups = [...document.querySelectorAll('#groupList input[type="checkbox"]:checked')];
-        if (!groups.length) { showError('Please select at least one log group.'); return; }
-
-        allLogs         = [];
-        currentPage     = 1;
-        liveNextStartMs = Date.now() - 60_000; // seed: last 60 s in ms
-        hideError();
-        setLiveActive(true);
-        pollLive();                                             // immediate first hit
-        liveInterval = setInterval(pollLive, 5000);
-    }
-
-    function stopLive() {
-        clearInterval(liveInterval);
-        liveInterval = null;
-        setLiveActive(false);
-    }
-
-    async function pollLive() {
-        const params = buildParams();
-        // Replace date-range params with the ms cursor — no seconds rounding
-        params.delete('start_ts');
-        params.delete('end_ts');
-        params.set('start_ts_ms', liveNextStartMs);
-
-        try {
-            const res  = await fetch(`${STREAM_URL}?${params.toString()}`);
-            const data = await res.json();
-
-            if (!res.ok) {
-                showError(data.error || `Live poll error (${res.status})`);
-                stopLive();
-                return;
-            }
-
-            // Surface partial warnings (some groups failed) without stopping live
-            if (data.warnings && data.warnings.length) {
-                showError('Warning: ' + data.warnings.join(' | '));
-            } else {
-                hideError();
-            }
-
-            if (data.next_start_ms) liveNextStartMs = data.next_start_ms;
-
-            if (data.events && data.events.length > 0) {
-                const newCount = data.events.length;
-                allLogs = [...data.events, ...allLogs].slice(0, 2000); // cap
-                currentPage = 1;
-                renderTable();
-                flashNewRows(newCount);
-            }
-
-            // Keep toolbar visible with live count even when no new events
-            document.getElementById('toolbar').style.display = 'flex';
-            document.getElementById('toolbarCount').innerHTML =
-                `<strong>${allLogs.length}</strong> logs captured`;
-        } catch (err) {
-            // Network hiccup — keep polling, don't stop live
-            console.warn('Live poll failed:', err.message);
-        }
-    }
-
-    function flashNewRows(count) {
-        const rows = document.querySelectorAll('#logTableBody tr');
-        for (let i = 0; i < Math.min(count, rows.length); i++) {
-            rows[i].classList.remove('row-new');
-            void rows[i].offsetWidth; // force reflow so animation restarts
-            rows[i].classList.add('row-new');
-        }
-    }
-
-    function setLiveActive(on) {
-        const btn       = document.getElementById('liveBtn');
-        const indicator = document.getElementById('liveIndicator');
-        const searchBtn = document.getElementById('searchBtn');
-        btn.textContent = on ? '■ Stop Live' : '▶ Go Live';
-        btn.classList.toggle('live-active', on);
-        indicator.style.display = on ? 'flex' : 'none';
-        searchBtn.disabled = on;
-        if (on) {
-            document.getElementById('emptyState').style.display  = 'none';
-            document.getElementById('toolbar').style.display     = 'flex';
-            document.getElementById('tableWrapper').style.display = 'block';
-        }
-    }
-
-    document.getElementById('liveBtn').addEventListener('click', () => {
-        liveInterval ? stopLive() : startLive();
-    });
-
-    // ── Search button ──────────────────────────────────────────
-    document.getElementById('searchBtn').addEventListener('click', fetchLogs);
-
-    // ── Enter key triggers search ──────────────────────────────
+    // ── Search button + Enter key ──────────────────────────────
+    searchBtn.addEventListener('click', fetchLogs);
     ['filterMessage','filterUserId','filterRequestId','filterUrl','startDate','endDate'].forEach(id => {
-        document.getElementById(id).addEventListener('keydown', e => {
-            if (e.key === 'Enter') fetchLogs();
-        });
-    });
-
-    // ── Escape closes modal ────────────────────────────────────
-    document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') closeModal();
+        $(id).addEventListener('keydown', e => { if (e.key === 'Enter') fetchLogs(); });
     });
 
     // ── Init ───────────────────────────────────────────────────
     buildTimezoneSelect();
     setDefaultDates();
-    document.getElementById('tzSelect').addEventListener('change', function () {
-        updateDateInputsForTimezone(this.value);
-        if (allLogs.length > 0) renderTable();
-    });
 
 })();
 </script>

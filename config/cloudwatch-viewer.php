@@ -63,6 +63,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Query Result Caching
+    |--------------------------------------------------------------------------
+    | Cache CloudWatch Insights query results to reduce API calls and latency.
+    | Live streaming is never cached.
+    |
+    | - enabled: Toggle caching on/off (default: false)
+    | - ttl:     Cache lifetime in seconds (default: 300 = 5 minutes)
+    | - store:   Laravel cache store to use (null = default store from cache.php)
+    |            e.g. 'redis', 'memcached', 'file'
+    */
+    'cache' => [
+        'enabled' => env('CLOUDWATCH_VIEWER_CACHE', false),
+        'ttl'     => env('CLOUDWATCH_VIEWER_CACHE_TTL', 300),
+        'store'   => env('CLOUDWATCH_VIEWER_CACHE_STORE', null),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Fields to Fetch
     |--------------------------------------------------------------------------
     | CloudWatch Insights fields included in every query.
@@ -104,6 +122,20 @@ return [
         ['label' => 'User ID',    'field' => 'context.user_id'],
         ['label' => 'URL',        'field' => 'context.url'],
         ['label' => 'Request ID', 'field' => 'context.request_id'],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Context Fields
+    |--------------------------------------------------------------------------
+    | Fields checked when the "Hide logs without context" filter is active.
+    | A log entry is considered to have context if at least one of these fields
+    | is present and non-empty. Adjust to match your log format.
+    */
+    'context_fields' => [
+        'context.request_id',
+        'context.url',
+        'context.user_id',
     ],
 
     /*

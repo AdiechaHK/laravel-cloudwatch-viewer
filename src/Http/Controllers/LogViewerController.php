@@ -6,6 +6,7 @@ use Aws\CloudWatchLogs\CloudWatchLogsClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Cache;
 
 class LogViewerController extends Controller
 {
@@ -53,41 +54,61 @@ class LogViewerController extends Controller
             $params['logGroupNames'] = $sanitizedGroups;
         }
 
-        try {
-            $startResult = $client->startQuery($params);
-            $queryId = $startResult['queryId'];
-        } catch (\Throwable $e) {
-            return response()->json(['error' => 'Failed to start CloudWatch query: ' . $e->getMessage()], 500);
+        $execute = fn () => $this->executeInsightsQuery($client, $params);
+
+        $cacheEnabled = config('cloudwatch-viewer.cache.enabled', false);
+
+        if ($cacheEnabled) {
+            $cacheKey = 'cwv:' . md5(implode(',', $sanitizedGroups) . $queryString . $startTime . $endTime);
+            $cacheTtl = (int) config('cloudwatch-viewer.cache.ttl', 300);
+            $store    = config('cloudwatch-viewer.cache.store');
+            $payload  = Cache::store($store)->remember($cacheKey, $cacheTtl, $execute);
+        } else {
+            $payload = $execute();
         }
 
-        $logs = [];
+        if (isset($payload['error'])) {
+            return response()->json(['error' => $payload['error']], 500);
+        }
+
+        return response()->json($payload);
+    }
+
+    protected function pollIntervalSeconds(): int { return 1; }
+    protected function maxPollAttempts(): int { return 10; }
+
+    protected function executeInsightsQuery(CloudWatchLogsClient $client, array $params): array
+    {
+        try {
+            $queryId = $client->startQuery($params)['queryId'];
+        } catch (\Throwable $e) {
+            return ['error' => 'Failed to start CloudWatch query: ' . $e->getMessage()];
+        }
+
+        $logs   = [];
         $status = 'Unknown';
 
-        for ($attempt = 0; $attempt < 10; $attempt++) {
-            sleep(1);
+        for ($attempt = 0; $attempt < $this->maxPollAttempts(); $attempt++) {
+            sleep($this->pollIntervalSeconds());
 
             try {
                 $result = $client->getQueryResults(['queryId' => $queryId]);
             } catch (\Throwable $e) {
-                return response()->json(['error' => 'Failed to retrieve query results: ' . $e->getMessage()], 500);
+                return ['error' => 'Failed to retrieve query results: ' . $e->getMessage()];
             }
 
             $status = $result['status'] ?? 'Unknown';
 
-            if (!in_array($status, ['Running', 'Scheduled'])) {
+            if (! in_array($status, ['Running', 'Scheduled'])) {
                 $logs = $this->flattenResults($result['results'] ?? []);
                 break;
             }
         }
 
-        return response()->json([
-            'logs' => $logs,
-            'count' => count($logs),
-            'status' => $status,
-        ]);
+        return ['logs' => $logs, 'count' => count($logs), 'status' => $status];
     }
 
-    private function buildQueryString(Request $request): string
+    protected function buildQueryString(Request $request): string
     {
         $filters = [];
 
@@ -118,7 +139,9 @@ class LogViewerController extends Controller
         }
 
         if ($request->boolean('has_context')) {
-            $filters[] = '(ispresent(context.request_id) or ispresent(context.url) or ispresent(context.user_id))';
+            $contextFields = config('cloudwatch-viewer.context_fields', ['context.request_id', 'context.url', 'context.user_id']);
+            $checks = implode(' or ', array_map(fn ($f) => "ispresent({$f})", $contextFields));
+            $filters[] = "({$checks})";
         }
 
         $configFields = config('cloudwatch-viewer.fields', []);
@@ -142,7 +165,7 @@ class LogViewerController extends Controller
         return $queryString;
     }
 
-    private function resolveStartTime(Request $request): int
+    protected function resolveStartTime(Request $request): int
     {
         // Prefer a UTC Unix timestamp sent directly from the JS timezone converter
         if ($ts = $request->input('start_ts')) {
@@ -162,7 +185,7 @@ class LogViewerController extends Controller
         return time() - ($defaultHours * 3600);
     }
 
-    private function resolveEndTime(Request $request): int
+    protected function resolveEndTime(Request $request): int
     {
         // Prefer a UTC Unix timestamp sent directly from the JS timezone converter
         if ($ts = $request->input('end_ts')) {
@@ -180,7 +203,7 @@ class LogViewerController extends Controller
         return time();
     }
 
-    private function flattenResults(array $results): array
+    protected function flattenResults(array $results): array
     {
         $logs = [];
 
@@ -262,11 +285,13 @@ class LogViewerController extends Controller
 
         // Apply has_context filter server-side
         if ($request->boolean('has_context')) {
-            $events = array_values(array_filter($events, fn ($e) =>
-                ! empty($e['context.request_id'])
-                || ! empty($e['context.url'])
-                || ! empty($e['context.user_id'])
-            ));
+            $contextFields = config('cloudwatch-viewer.context_fields', ['context.request_id', 'context.url', 'context.user_id']);
+            $events = array_values(array_filter($events, function ($e) use ($contextFields) {
+                foreach ($contextFields as $field) {
+                    if (! empty($e[$field])) return true;
+                }
+                return false;
+            }));
         }
 
         // Sort newest first (same as Insights output)
@@ -285,7 +310,7 @@ class LogViewerController extends Controller
         ]);
     }
 
-    private function parseLogEvent(array $event): array
+    protected function parseLogEvent(array $event): array
     {
         $entry = [
             '@timestamp'     => gmdate('Y-m-d H:i:s', (int) ($event['timestamp'] / 1000)),
@@ -296,16 +321,24 @@ class LogViewerController extends Controller
         $decoded = json_decode(trim($event['message']), true);
 
         if (is_array($decoded)) {
-            $entry['level_name']          = $decoded['level_name'] ?? null;
-            $entry['message']             = $decoded['message'] ?? $event['message'];
-            $entry['context.request_id']  = $decoded['context']['request_id'] ?? null;
-            $entry['context.user_id']     = $decoded['context']['user_id'] ?? null;
-            $entry['context.url']         = $decoded['context']['url'] ?? null;
-            $entry['context.method']      = $decoded['context']['method'] ?? null;
-            $entry['context.ip']          = $decoded['context']['ip'] ?? null;
-            $entry['context.environment'] = $decoded['context']['environment'] ?? null;
+            // Flatten nested JSON into dot-notation keys (e.g. context.user_id)
+            // then pick only the fields declared in config so the response stays lean
+            $flat         = $this->flattenArray($decoded);
+            $configFields = config('cloudwatch-viewer.fields', []);
 
-            // Use the log's own datetime if present (more precise than event timestamp)
+            foreach ($configFields as $field) {
+                if (array_key_exists($field, $flat)) {
+                    $entry[$field] = $flat[$field];
+                }
+            }
+
+            // Ensure message always has a value
+            if (empty($entry['message'])) {
+                $entry['message'] = $decoded['message'] ?? $event['message'];
+            }
+
+            // If the log record carries its own high-precision datetime, prefer it
+            // over the CloudWatch event timestamp (common with Monolog, Laravel, etc.)
             if (! empty($decoded['datetime'])) {
                 $ts = strtotime($decoded['datetime']);
                 if ($ts !== false) {
@@ -320,7 +353,28 @@ class LogViewerController extends Controller
         return $entry;
     }
 
-    private function buildLiveFilterPattern(Request $request): ?string
+    /**
+     * Recursively flatten a nested array into dot-notation keys.
+     * ['context' => ['user_id' => 1]] → ['context.user_id' => 1]
+     */
+    protected function flattenArray(array $array, string $prefix = ''): array
+    {
+        $result = [];
+
+        foreach ($array as $key => $value) {
+            $fullKey = $prefix !== '' ? "{$prefix}.{$key}" : (string) $key;
+
+            if (is_array($value) && ! empty($value)) {
+                $result += $this->flattenArray($value, $fullKey);
+            } else {
+                $result[$fullKey] = $value;
+            }
+        }
+
+        return $result;
+    }
+
+    protected function buildLiveFilterPattern(Request $request): ?string
     {
         $conditions = [];
 
@@ -352,7 +406,7 @@ class LogViewerController extends Controller
         return '{ ' . implode(' && ', $conditions) . ' }';
     }
 
-    private function makeClient(): CloudWatchLogsClient
+    protected function makeClient(): CloudWatchLogsClient
     {
         $config = [
             'region' => config('cloudwatch-viewer.region', 'us-east-1'),
@@ -371,7 +425,7 @@ class LogViewerController extends Controller
         return new CloudWatchLogsClient($config);
     }
 
-    private function getEnabledGroups(): array
+    protected function getEnabledGroups(): array
     {
         $groups = config('cloudwatch-viewer.groups', []);
 
